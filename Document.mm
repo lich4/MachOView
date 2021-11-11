@@ -445,6 +445,14 @@ enum ViewType
   }
 }
 
+void do_in_mainthread(dispatch_block_t block) {
+    if ([NSThread isMainThread]) {
+        block();
+    } else {
+        dispatch_sync(dispatch_get_main_queue(), block);
+    }
+}
+
 //----------------------------------------------------------------------------
 - (void)handleThreadStateChanged:(NSNotification *)notification
 {
@@ -455,18 +463,22 @@ enum ViewType
     {
       if (OSAtomicIncrement32(&threadCount) == 1)
       {
-        [progressIndicator setUsesThreadedAnimation:YES];
-        [progressIndicator startAnimation:nil];
-        [stopButton setHidden:NO];
+        do_in_mainthread(^{
+            [progressIndicator setUsesThreadedAnimation:YES];
+            [progressIndicator startAnimation:nil];
+            [stopButton setHidden:NO];
+        });
       }
     }
     else if ([threadState isEqualToString:MVStatusTaskTerminated] == YES)
     {
       if (OSAtomicDecrement32(&threadCount) == 0)
       {
-        [progressIndicator stopAnimation:nil]; 
-        [statusText setStringValue:@""];
-        [stopButton setHidden:YES];
+        do_in_mainthread(^{
+            [progressIndicator stopAnimation:nil];
+            [statusText setStringValue:@""];
+            [stopButton setHidden:YES];
+        });
       }
     }
   }
